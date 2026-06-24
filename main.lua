@@ -17,6 +17,6 @@ View the source here: https://github.com/NewMatheusDC/kohlslite
 getgenv().theprefix = "."
 
 -- Autorun commands (run when script loads)
-getgenv().autoruncmds = {".admin", ".antifreeze", ".antijail", ".antipunish", ".autof3x", ".nkill"}
+getgenv().autoruncmds = {".admin", ".antikill", ".antifreeze", ".antijail", ".antipunish", ".autof3x", ".nkill"}
 
 loadstring(game:HttpGet("https://raw.githubusercontent.com/NewMatheusDC/kohlslite/refs/heads/main/source.lua"))()

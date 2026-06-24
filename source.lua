@@ -82,7 +82,7 @@ local config = {
     explode_count = 100,
     explode_interval = 0.8,
     prefix = prefix,
-    autoruncmds = {".admin", ".antifreeze", ".antijail", ".antipunish", ".autof3x", ".nkill", ".antikill"}
+    autoruncmds = {".admin", ".antikill", ".antifreeze", ".antijail", ".antipunish", ".autof3x", ".nkill"}
 }
 
 local function ensureFolder()
