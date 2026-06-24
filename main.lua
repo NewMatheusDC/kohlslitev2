@@ -19,4 +19,4 @@ getgenv().theprefix = "."
 -- Autorun commands (run when script loads)
 getgenv().autoruncmds = {".admin", ".antikill", ".antifreeze", ".antijail", ".antipunish", ".autof3x", ".nkill"}
 
-loadstring(game:HttpGet("https://raw.githubusercontent.com/NewMatheusDC/kohlslite/refs/heads/main/source.lua"))()
+loadstring(game:HttpGet("https://raw.githubusercontent.com/NewMatheusDC/kohlslitev2/refs/heads/main/source.lua"))()
