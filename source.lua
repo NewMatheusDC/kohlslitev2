@@ -1,5 +1,5 @@
 getgenv().scriptname = "KohlsLite"
-getgenv().klversion = "0.2"
+getgenv().klversion = "0.3"
 local prefix = getgenv().prefix or "."
 
 local function SendCommand(cmd)
@@ -82,7 +82,7 @@ local config = {
     explode_count = 100,
     explode_interval = 0.8,
     prefix = prefix,
-    autorun = {}
+    autorun = {".nkill", ".antijail", ".antifreeze", ".autof3x"}
 }
 
 local function ensureFolder()
@@ -125,7 +125,6 @@ local function setPrefix(newPrefix)
     end
 end
 
--- State variables
 local spam_running = false
 local spam_commands = {}
 local spam_index = 1
@@ -156,7 +155,6 @@ local admin_thread = nil
 local loopgrab_enabled = false
 local loopgrab_thread = nil
 
--- Platform
 local function togglePlatform(on)
     if on then
         if platform_part then platform_part:Destroy() end
@@ -188,7 +186,6 @@ task.spawn(function()
     end
 end)
 
--- Spam
 local function spamStep()
     if not spam_running or #spam_commands == 0 then return end
     local cmd = spam_commands[spam_index]
@@ -200,7 +197,6 @@ local function spamStep()
     spam_timer = task.delay(config.spam_delay, spamStep)
 end
 
--- Super
 local function runSuper()
     super_running = true
     for iter = 1, config.super_count do
@@ -215,7 +211,6 @@ local function runSuper()
     Notify("Super finished.")
 end
 
--- Explode
 local function runExplode(target)
     if not target then target = "me" end
     for i = 1, config.explode_count do
@@ -250,7 +245,6 @@ local function findPlayer(input)
     return nil
 end
 
--- Softlock
 local function softlockLoop()
     softlock_last_state = nil
     while softlock_enabled and softlock_target do
@@ -269,7 +263,6 @@ local function softlockLoop()
     softlock_last_state = nil
 end
 
--- Makechat
 local function makeChat(target, message)
     if not target or not message then return end
     local plr = findPlayer(target)
@@ -288,7 +281,6 @@ local function makeChat(target, message)
     SendCommand(cmd)
 end
 
--- Regen
 local function doRegen()
     local regen = workspace:FindFirstChild("Terrain"):FindFirstChild("_Game"):FindFirstChild("Admin"):FindFirstChild("Regen")
     if regen and regen:FindFirstChild("ClickDetector") then
@@ -310,7 +302,6 @@ local function regenLoop()
     end
 end
 
--- Nkill
 local function nKill()
     local obby = workspace:FindFirstChild("Tabby"):FindFirstChild("Admin_House"):FindFirstChild("Obby")
     if not obby then
@@ -331,7 +322,7 @@ local function nKill()
     Notify("Removed "..count.." TouchInterests from Obby.")
 end
 
--- Anti-jail (instant, one-shot)
+-- Anti-jail (instant)
 task.spawn(function()
     local lastJailed = false
     while true do
@@ -353,7 +344,7 @@ task.spawn(function()
     end
 end)
 
--- Anti-freeze (instant, one-shot)
+-- Anti-freeze (instant)
 task.spawn(function()
     local lastFrozen = false
     while true do
@@ -385,7 +376,7 @@ task.spawn(function()
     end
 end)
 
--- Anti-punish (instant, one-shot)
+-- Anti-punish (instant)
 task.spawn(function()
     local lastPunished = false
     while true do
@@ -421,7 +412,6 @@ local function adminLoop()
                 end
             end
             if not hasAdmin then
-                local regen = workspace:FindFirstChild("Terrain"):FindFirstChild("_Game"):FindFirstChild("Admin"):FindFirstChild("Regen")
                 local clicked = false
                 for _, pad in pairs(pads:GetChildren()) do
                     if pad:FindFirstChild("Head") and pad.Head:FindFirstChild("TouchInterest") then
@@ -435,8 +425,8 @@ local function adminLoop()
                         end
                     end
                 end
-                if not clicked and regen and regen:FindFirstChild("ClickDetector") and fireclickdetector then
-                    fireclickdetector(regen.ClickDetector, 0)
+                if not clicked then
+                    doRegen()
                 end
             end
         end
@@ -444,7 +434,7 @@ local function adminLoop()
     end
 end
 
--- Loopgrab: check all pads; if any not mine, regen
+-- Loopgrab: ensure all pads are owned by player, try to touch if not, regen as fallback
 local function loopgrabLoop()
     while loopgrab_enabled do
         local playerName = game.Players.LocalPlayer.Name
@@ -454,21 +444,32 @@ local function loopgrabLoop()
             for _, pad in pairs(pads:GetChildren()) do
                 if pad.Name ~= playerName .. "'s admin" then
                     allMine = false
-                    break
+                    -- Try to grab this pad
+                    local grabbed = false
+                    if pad:FindFirstChild("Head") and pad.Head:FindFirstChild("TouchInterest") then
+                        local head = game.Players.LocalPlayer.Character and game.Players.LocalPlayer.Character:FindFirstChild("Head")
+                        if head and firetouchinterest then
+                            firetouchinterest(pad.Head, head, 0)
+                            firetouchinterest(pad.Head, head, 1)
+                            firetouchinterest(pad.Head, head, 0)
+                            grabbed = true
+                        end
+                    end
+                    if not grabbed then
+                        -- If can't grab, regen to reset pads
+                        doRegen()
+                        break -- after regen, restart the loop
+                    end
                 end
             end
-            if not allMine then
-                local regen = workspace:FindFirstChild("Terrain"):FindFirstChild("_Game"):FindFirstChild("Admin"):FindFirstChild("Regen")
-                if regen and regen:FindFirstChild("ClickDetector") and fireclickdetector then
-                    fireclickdetector(regen.ClickDetector, 0)
-                end
+            if allMine then
+                -- All pads are mine, do nothing
             end
         end
-        task.wait(0.001) -- 1ms
+        task.wait(0.001) -- 1ms loop for instant response
     end
 end
 
--- Command handler
 local function handleCommand(msg)
     local args = string.split(msg, " ")
     local cmd = args[1]:gsub("^"..prefix, "")
@@ -677,7 +678,7 @@ local function handleCommand(msg)
         end
         loopgrab_enabled = true
         loopgrab_thread = task.spawn(loopgrabLoop)
-        Notify("Loopgrab started.")
+        Notify("Loopgrab started (instant).")
         return
     end
 
@@ -732,7 +733,7 @@ local function handleCommand(msg)
         print(".unantipunish - disable antipunish")
         print(".admin - loop to get admin (regen if no pad)")
         print(".unadmin - stop admin loop")
-        print(".loopgrab - ensure all pads are yours (regen if not)")
+        print(".loopgrab - ensure all pads are yours (instant, touches pads)")
         print(".unloopgrab - stop loopgrab")
         print(".autof3x - give F3X starter once")
         print(".prefix <new> - change prefix")
@@ -754,7 +755,6 @@ game.TextChatService.MessageReceived:Connect(function(tbl)
     end
 end)
 
--- CmdBar UI
 local function createCmdBar()
     local gui = Instance.new("ScreenGui")
     gui.Name = "CmdBar"
@@ -817,7 +817,6 @@ end
 
 task.spawn(createCmdBar)
 
--- Autorun
 task.spawn(function()
     task.wait(1)
     if config.autorun then
